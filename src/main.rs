@@ -1,4 +1,7 @@
 use std::net::TcpListener;
+use std::io::Read;
+use std::io::Write;
+use std::net::TcpStream;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -8,12 +11,19 @@ fn main() {
     
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
-                println!("accepted new connection");
+            Ok(stream) => {
+                handle_clinet(stream)
             }
             Err(e) => {
                 println!("error: {}", e);
             }
         }
     }
+
+}
+
+fn handle_clinet(mut stream: TcpStream) {
+    let mut buf=  [0; 256];
+    let _read_size = stream.read(& mut buf);
+    stream.write_all(b"+PONG\r\n").unwrap();
 }
