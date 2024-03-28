@@ -1,29 +1,25 @@
-use std::net::TcpListener;
 use std::io::Read;
 use std::io::Write;
+use std::net::TcpListener;
 use std::net::TcpStream;
 
 fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println!("Logs from your program will appear here!");
-
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-    
+
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                handle_clinet(stream)
-            }
+            Ok(stream) => handle_clinet(stream),
             Err(e) => {
                 println!("error: {}", e);
             }
         }
     }
-
 }
 
 fn handle_clinet(mut stream: TcpStream) {
-    let mut buf=  [0; 256];
-    let _read_size = stream.read(& mut buf);
-    stream.write_all(b"+PONG\r\n").unwrap();
+    let mut buf = [0; 256];
+    loop {
+        let _read_size = stream.read(&mut buf);
+        stream.write_all(b"+PONG\r\n").unwrap();
+    }
 }
