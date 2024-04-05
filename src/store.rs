@@ -1,5 +1,8 @@
-use std::collections::HashMap;
-
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+pub type StoreArc = Arc<Mutex<Store>>;
 pub struct Store {
     data: HashMap<String, String>,
 }

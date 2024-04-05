@@ -21,7 +21,12 @@ impl RedisValue {
     pub fn serialize(&self) -> String {
         match self {
             RedisValue::SimpleString(s) => format!("+{}\r\n", s),
-            RedisValue::BulkString(s) => format!("${}\r\n{}\r\n", s.len(), s),
+            RedisValue::BulkString(s) => {
+                if s.is_empty() {
+                    return format!("$-1\r\n");
+                }
+                format!("${}\r\n{}\r\n", s.len(), s)
+            }
             _ => panic!("serializer not implemented for this type"),
         }
     }

@@ -1,4 +1,4 @@
-use crate::store::Store;
+use crate::store::StoreArc;
 use std::collections::VecDeque;
 
 use anyhow::{anyhow, Ok, Result};
@@ -12,13 +12,11 @@ pub enum Request {
     GET(String),
 }
 pub struct RequestHandler {
-    store: Store,
+    store: StoreArc,
 }
 impl RequestHandler {
-    pub fn new() -> Self {
-        RequestHandler {
-            store: Store::new(),
-        }
+    pub fn new(store: StoreArc) -> Self {
+        RequestHandler { store }
     }
 
     pub fn handle_request(&mut self, req: Request) -> RedisValue {
@@ -26,16 +24,24 @@ impl RequestHandler {
             Request::PING => RedisValue::BulkString("PONG".to_string()),
             Request::ECHO(s) => RedisValue::BulkString(s),
             Request::SET(key, value) => {
-                self.store.set(key, value);
+                self.store
+                    .try_lock()
+                    .and_then(|mut store| std::result::Result::Ok(store.set(key, value)))
+                    .unwrap();
                 RedisValue::SimpleString("OK".to_string())
             }
-            Request::GET(key) => RedisValue::BulkString(
-                self.store
-                    .get(key)
-                    .ok_or(anyhow!("value not set"))
-                    .unwrap()
-                    .to_string(),
-            ),
+
+            Request::GET(key) => {
+                let val = self
+                    .store
+                    .try_lock()
+                    .and_then(|store| {
+                        let val = store.get(key).unwrap_or(&String::new()).to_string();
+                        std::result::Result::Ok(val)
+                    })
+                    .unwrap();
+                RedisValue::BulkString(val)
+            }
         }
     }
 }
