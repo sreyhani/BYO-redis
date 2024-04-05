@@ -1,7 +1,8 @@
 mod parser;
 mod request;
+mod store;
 
-use crate::request::{get_request, handle_request};
+use crate::request::{get_request, RequestHandler};
 use bytes::BytesMut;
 use parser::parse_redis_value;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -21,17 +22,15 @@ async fn main() {
 
 async fn handle_clinet(mut stream: TcpStream) {
     let mut buf = BytesMut::with_capacity(512);
+    let mut req_handler = RequestHandler::new();
     loop {
         let read_size = stream.read_buf(&mut buf).await.unwrap();
         if read_size == 0 {
             return;
         }
-        println!(
-            "received data: {:?}",
-            std::str::from_utf8(&buf[..read_size])
-        );
+
         let request = get_request(parse_redis_value(&mut buf).unwrap()).unwrap();
-        let response = handle_request(request);
+        let response = req_handler.handle_request(request);
         stream
             .write_all(response.serialize().as_bytes())
             .await
