@@ -1,23 +1,40 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
-pub type StoreArc = Arc<Mutex<Store>>;
+use std::sync::Arc;
+use std::{collections::HashMap, time::Duration};
+
+use tokio::sync::Mutex;
+
+use tokio::time::sleep;
+pub type StoreArc = Arc<Store>;
 pub struct Store {
-    data: HashMap<String, String>,
+    data: Arc<Mutex<HashMap<String, String>>>,
 }
 
 impl Store {
     pub fn new() -> Self {
         Store {
-            data: HashMap::new(),
+            data: Arc::new(Mutex::new(HashMap::new())),
         }
     }
-    pub fn set(&mut self, key: String, val: String) {
-        self.data.insert(key, val);
+    pub async fn set(&self, key: String, val: String) {
+        let mut data = self.data.lock().await;
+        data.insert(key, val);
     }
 
-    pub fn get(&self, key: String) -> Option<&String> {
-        self.data.get(&key)
+    pub async fn set_with_expire(&self, key: String, val: String, expire: Duration) {
+        let data_clone = self.data.clone();
+        let key_clone = key.clone();
+        let mut data = self.data.lock().await;
+        data.insert(key, val);
+
+        tokio::spawn(async move {
+            sleep(expire).await;
+            let mut data = data_clone.lock().await;
+            data.remove(&key_clone);
+        });
+    }
+
+    pub async fn get(&self, key: String) -> Option<String> {
+        let data = self.data.lock().await;
+        data.get(&key).cloned()
     }
 }
