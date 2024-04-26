@@ -6,37 +6,46 @@ use anyhow::{anyhow, Ok, Result};
 use crate::parser::RedisValue;
 
 pub enum Request {
-    PING,
-    ECHO(String),
-    SET(String, String, Option<Duration>),
-    GET(String),
+    Ping,
+    Echo(String),
+    Set(String, String, Option<Duration>),
+    Get(String),
+    ConfigGet(String),
 }
 
 pub struct RequestHandler {
     store: StoreArc,
+    config: SystemConfigArc,
 }
 impl RequestHandler {
     pub fn new(store: StoreArc, config: SystemConfigArc) -> Self {
-        RequestHandler { store }
+        RequestHandler { store, config }
     }
 
     pub async fn handle_request(&mut self, req: Request) -> RedisValue {
         match req {
-            Request::PING => RedisValue::BulkString("PONG".to_string()),
-            Request::ECHO(s) => RedisValue::BulkString(s),
-            Request::SET(key, value, None) => {
+            Request::Ping => RedisValue::BulkString("PONG".to_string()),
+            Request::Echo(s) => RedisValue::BulkString(s),
+            Request::Set(key, value, None) => {
                 self.store.set(key, value).await;
                 RedisValue::SimpleString("OK".to_string())
             }
 
-            Request::SET(key, value, Some(expire)) => {
+            Request::Set(key, value, Some(expire)) => {
                 self.store.set_with_expire(key, value, expire).await;
                 RedisValue::SimpleString("OK".to_string())
             }
 
-            Request::GET(key) => {
+            Request::Get(key) => {
                 let val = self.store.get(key).await.unwrap_or(String::new());
                 RedisValue::BulkString(val)
+            }
+            Request::ConfigGet(key) => {
+                let val = self.config.get_config(&key).unwrap_or(String::new());
+                RedisValue::Array(vec![
+                    RedisValue::BulkString(key),
+                    RedisValue::BulkString(val),
+                ])
             }
         }
     }
@@ -45,27 +54,39 @@ impl RequestHandler {
 pub fn get_request(value: RedisValue) -> Result<Request> {
     let (command, mut args) = get_command(value)?;
     match command.as_str() {
-        "ping" => Ok(Request::PING),
+        "ping" => Ok(Request::Ping),
         "echo" => {
             let message = args
                 .pop_front()
                 .ok_or(anyhow!("echo needs at least 1 argument"))?;
-            Ok(Request::ECHO(message))
+            Ok(Request::Echo(message))
         }
         "set" => make_set_request(&mut args),
         "get" => {
             let key = args
                 .pop_front()
                 .ok_or(anyhow!("get needs at least 1 argument"))?;
-            Ok(Request::GET(key))
+            Ok(Request::Get(key))
         }
+        "config" => make_config_request(&mut args),
         _ => Err(anyhow!("unsupported command")),
     }
 }
 
-fn make_set_request(
-    args: &mut VecDeque<String>,
-) -> std::prelude::v1::Result<Request, anyhow::Error> {
+fn make_config_request(args: &mut VecDeque<String>) -> Result<Request> {
+    let sub_command = args.pop_front().ok_or(anyhow!("config needs subcommand"))?;
+    match sub_command.as_str() {
+        "get" => {
+            let key = args
+                .pop_front()
+                .ok_or(anyhow!("config get needs at least 1 argument"))?;
+            Ok(Request::ConfigGet(key))
+        }
+        _ => Err(anyhow!("config {} is not supported", sub_command)),
+    }
+}
+
+fn make_set_request(args: &mut VecDeque<String>) -> Result<Request> {
     let key = args
         .pop_front()
         .ok_or(anyhow!("set needs at least 2 argument"))?;
@@ -79,10 +100,10 @@ fn make_set_request(
                 .pop_front()
                 .ok_or(anyhow!("px needs argument"))?
                 .parse::<u64>()?;
-            return Ok(Request::SET(key, value, Some(Duration::from_millis(delay))));
+            return Ok(Request::Set(key, value, Some(Duration::from_millis(delay))));
         }
     }
-    Ok(Request::SET(key, value, None))
+    Ok(Request::Set(key, value, None))
 }
 
 fn get_command(value: RedisValue) -> Result<(String, VecDeque<String>)> {

@@ -10,6 +10,16 @@ pub struct SystemConfig {
     db_file_name: Option<String>,
 }
 
+impl SystemConfig {
+    pub fn get_config(&self, key: &String) -> Option<String> {
+        match key.as_str() {
+            "dir" => self.db_dir.clone(),
+            "dbfilename" => self.db_file_name.clone(),
+            _ => None,
+        }
+    }
+}
+
 pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
     let mut config = SystemConfig {
         db_dir: None,
@@ -57,28 +67,28 @@ mod test {
 
     #[test]
     fn should_err_if_db_dir_has_no_value() {
-        let args = vec!["--dir"];
+        let args = vec!["exec", "--dir"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         check_err(res, "provide value for --dir");
     }
 
     #[test]
     fn should_err_if_dbfilename_has_no_value() {
-        let args = vec!["--dir", "filedir", "--dbfilename"];
+        let args = vec!["exec", "--dir", "filedir", "--dbfilename"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         check_err(res, "provide value for --dbfilename");
     }
 
     #[test]
     fn should_err_if_dbfielname_is_not_specified_with_dir() {
-        let args = vec!["--dir", "filedir"];
+        let args = vec!["exec", "--dir", "filedir"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         check_err(res, "provide --dbfilename with --dir");
     }
 
     #[test]
     fn should_return_config_with_given_values() {
-        let args = vec!["--dir", "filedir", "--dbfilename", "filename"];
+        let args = vec!["exec", "--dir", "filedir", "--dbfilename", "filename"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         let expected_config = SystemConfig {
             db_dir: Some("filedir".to_owned()),

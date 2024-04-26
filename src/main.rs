@@ -18,15 +18,16 @@ use tokio::net::{TcpListener, TcpStream};
 #[tokio::main]
 async fn main() {
     let args = std::env::args();
-    let _config = Arc::new(parse_args(args).unwrap());
+    let config = Arc::new(parse_args(args).unwrap());
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
     println!("start");
     let store = Arc::new(Store::new());
     loop {
         let (socket, _) = listener.accept().await.unwrap();
         let store_c = store.clone();
+        let config_c = config.clone();
         tokio::spawn(async move {
-            handle_clinet(socket, store_c).await;
+            handle_clinet(socket, store_c, config_c).await;
         });
     }
 }
