@@ -27,7 +27,11 @@ impl RedisValue {
                 }
                 format!("${}\r\n{}\r\n", s.len(), s)
             }
-            _ => panic!("serializer not implemented for this type"),
+            RedisValue::Array(arr) => {
+                let values_serialized: Vec<String> =
+                    arr.iter().map(|val| val.serialize()).collect();
+                format!("*{}\r\n{}", arr.len(), values_serialized.concat())
+            }
         }
     }
 }
