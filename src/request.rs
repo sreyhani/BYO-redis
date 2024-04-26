@@ -1,4 +1,4 @@
-use crate::store::StoreArc;
+use crate::{config::SystemConfigArc, store::StoreArc};
 use std::{collections::VecDeque, time::Duration};
 
 use anyhow::{anyhow, Ok, Result};
@@ -16,7 +16,7 @@ pub struct RequestHandler {
     store: StoreArc,
 }
 impl RequestHandler {
-    pub fn new(store: StoreArc) -> Self {
+    pub fn new(store: StoreArc, config: SystemConfigArc) -> Self {
         RequestHandler { store }
     }
 
