@@ -37,4 +37,10 @@ impl Store {
         let data = self.data.lock().await;
         data.get(&key).cloned()
     }
+
+    pub async fn get_matching_keys(&self, pattern: String) -> Vec<String> {
+        assert_eq!(pattern, "*");
+        let data = self.data.lock().await;
+        data.keys().cloned().collect()
+    }
 }

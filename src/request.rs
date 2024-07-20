@@ -11,6 +11,7 @@ pub enum Request {
     Set(String, String, Option<Duration>),
     Get(String),
     ConfigGet(String),
+    KEYS(String),
 }
 
 pub struct RequestHandler {
@@ -47,12 +48,18 @@ impl RequestHandler {
                     RedisValue::BulkString(val),
                 ])
             }
+            Request::KEYS(pattern) => {
+                assert!(pattern == "*");
+                let key = self.store.get_matching_keys(pattern).await;
+                let resp = key.into_iter().map(|k| RedisValue::BulkString(k)).collect();
+                RedisValue::Array(resp)
+            }
         }
     }
 }
 
 pub fn get_request(value: RedisValue) -> Result<Request> {
-    let (command, mut args) = get_command(value)?;
+    let (command, mut args) = get_command_and_args(value)?;
     match command.as_str() {
         "ping" => Ok(Request::Ping),
         "echo" => {
@@ -69,6 +76,12 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
             Ok(Request::Get(key))
         }
         "config" => make_config_request(&mut args),
+        "keys" => {
+            let pattern = args
+                .pop_front()
+                .ok_or(anyhow!("keys needs at least 1 argument"))?;
+            Ok(Request::KEYS(pattern))
+        }
         _ => Err(anyhow!("unsupported command")),
     }
 }
@@ -106,7 +119,7 @@ fn make_set_request(args: &mut VecDeque<String>) -> Result<Request> {
     Ok(Request::Set(key, value, None))
 }
 
-fn get_command(value: RedisValue) -> Result<(String, VecDeque<String>)> {
+fn get_command_and_args(value: RedisValue) -> Result<(String, VecDeque<String>)> {
     match value {
         RedisValue::Array(vals) => {
             let mut args: VecDeque<String> = vals
