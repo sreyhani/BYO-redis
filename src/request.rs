@@ -88,7 +88,7 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
 
 fn make_config_request(args: &mut VecDeque<String>) -> Result<Request> {
     let sub_command = args.pop_front().ok_or(anyhow!("config needs subcommand"))?;
-    match sub_command.as_str() {
+    match sub_command.to_lowercase().as_str() {
         "get" => {
             let key = args
                 .pop_front()

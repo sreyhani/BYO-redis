@@ -18,6 +18,13 @@ impl SystemConfig {
             _ => None,
         }
     }
+
+    pub fn get_rdb_path(&self) -> Option<String> {
+        if self.db_dir.is_none() {
+            return  None;
+        } 
+        Some(self.db_dir.clone().unwrap() + "/" + &self.db_file_name.clone().unwrap())
+    }
 }
 
 pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {

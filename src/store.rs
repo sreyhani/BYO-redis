@@ -15,6 +15,14 @@ impl Store {
             data: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+
+    pub async fn add_set(&self, map: HashMap<String, String>) {
+        let mut data = self.data.lock().await;
+        for (key, value) in map {
+            data.insert(key, value);
+        }
+    }
+    
     pub async fn set(&self, key: String, val: String) {
         let mut data = self.data.lock().await;
         data.insert(key, val);
