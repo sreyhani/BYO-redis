@@ -1,17 +1,12 @@
-mod config;
-mod parser;
-mod request;
-mod store;
 
 use std::sync::Arc;
 
-use crate::request::{get_request, RequestHandler};
-use crate::store::Store;
+
 use bytes::BytesMut;
-use config::parse_args;
-use config::SystemConfigArc;
-use parser::parse_redis_value;
-use store::StoreArc;
+use redis_starter_rust::config::{parse_args, SystemConfigArc};
+use redis_starter_rust::parser::parse_redis_value;
+use redis_starter_rust::request::{get_request, RequestHandler};
+use redis_starter_rust::store::{Store, StoreArc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 

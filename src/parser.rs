@@ -89,7 +89,7 @@ fn split_by_next_crlf(buffer: &mut BytesMut) -> Option<BytesMut> {
 
 #[cfg(test)]
 mod test {
-    use crate::{parse_redis_value, parser::RedisValue};
+    use crate::parser::{parse_redis_value, RedisValue};
     use bytes::BytesMut;
 
     #[test]
