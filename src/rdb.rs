@@ -21,6 +21,7 @@ pub fn read_rdb_file(path: String) -> Result<RdbFile> {
     let reader = io::BufReader::new(file);
     parse(reader)
 }
+
 fn parse(mut reader: impl BufRead) -> Result<RdbFile> {
     read_header(&mut reader)?;
     let mut buf = vec![];

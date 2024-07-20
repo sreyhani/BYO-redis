@@ -22,7 +22,7 @@ impl Store {
             data.insert(key, value);
         }
     }
-    
+
     pub async fn set(&self, key: String, val: String) {
         let mut data = self.data.lock().await;
         data.insert(key, val);

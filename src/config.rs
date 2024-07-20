@@ -21,8 +21,8 @@ impl SystemConfig {
 
     pub fn get_rdb_path(&self) -> Option<String> {
         if self.db_dir.is_none() {
-            return  None;
-        } 
+            return None;
+        }
         Some(self.db_dir.clone().unwrap() + "/" + &self.db_file_name.clone().unwrap())
     }
 }
