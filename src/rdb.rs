@@ -1,5 +1,4 @@
 use std::{
-    alloc::System,
     collections::HashMap,
     fs::File,
     io::{self, BufRead, Read},
@@ -34,11 +33,16 @@ fn parse(mut reader: impl BufRead) -> Result<RdbFile> {
     let mut key_vals = HashMap::<String, String>::new();
     let mut key_expires = HashMap::<String, Duration>::new();
     for _ in 0..hash_size {
-        let (key, value, duration) = read_string_key_value(&mut reader)?;
-        if let Some(duration) = duration {
-            key_expires.insert(key.clone(), duration);
+        let (key, value, expire_time) = read_string_key_value(&mut reader)?;
+        if let Some(expire_time) = expire_time {
+            if SystemTime::now()  < expire_time {
+                let duration = expire_time.duration_since(SystemTime::now())?;
+                key_expires.insert(key.clone(), duration);
+                key_vals.insert(key, value);
+            }
+        } else {
+            key_vals.insert(key, value);
         }
-        key_vals.insert(key, value);
     }
 
     Ok(RdbFile {
@@ -49,7 +53,7 @@ fn parse(mut reader: impl BufRead) -> Result<RdbFile> {
 
 fn read_string_key_value(
     reader: &mut impl BufRead,
-) -> Result<(String, String, Option<Duration>), anyhow::Error> {
+) -> Result<(String, String, Option<SystemTime>), anyhow::Error> {
     let mut value_type = [0];
     reader.read_exact(&mut value_type)?;
     let expire_time = match value_type[0] {
@@ -59,23 +63,15 @@ fn read_string_key_value(
             reader.read_exact(&mut value_type)?;
             let expire_time_ms = u64::from_le_bytes(expire_time_ms);
             let expire_time = UNIX_EPOCH + Duration::from_millis(expire_time_ms);
-            if SystemTime::now() > expire_time {
-                None
-            } else {
-                Some(expire_time.duration_since(SystemTime::now())?)
-            }
+            Some(expire_time)
         }
         EXPIRE_S => {
             let mut expire_time_s = [0; 4];
             reader.read_exact(&mut expire_time_s)?;
             reader.read_exact(&mut value_type)?;
             let expire_time_s = u32::from_le_bytes(expire_time_s) as u64;
-            let expire_time = UNIX_EPOCH + Duration::from_secs(expire_time_s);
-            if SystemTime::now() > expire_time {
-                None
-            } else {
-                Some(expire_time.duration_since(SystemTime::now())?)
-            }
+            let expire_time = UNIX_EPOCH + Duration::from_secs(expire_time_s);            
+            Some(expire_time)
         }
         _ => None,
     };
@@ -88,11 +84,9 @@ fn read_string_key_value(
     reader.read_exact(&mut value_string_size)?;
     let mut value = vec![0; value_string_size[0].into()];
     reader.read_exact(&mut value)?;
-    Ok((
-        String::from_utf8(key)?,
-        String::from_utf8(value)?,
-        expire_time,
-    ))
+    let key = String::from_utf8(key)?;
+    let value = String::from_utf8(value)?;
+    Ok((key, value, expire_time))
 }
 
 fn read_hash_size(reader: &mut impl BufRead) -> Result<u8, anyhow::Error> {
