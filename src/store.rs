@@ -16,10 +16,16 @@ impl Store {
         }
     }
 
-    pub async fn add_set(&self, map: HashMap<String, String>) {
+    pub async fn add_multiple_keys(&self, map: HashMap<String, String>) {
         let mut data = self.data.lock().await;
         for (key, value) in map {
             data.insert(key, value);
+        }
+    }
+
+    pub fn set_multiple_expires(&self, map: HashMap<String, Duration>) {
+        for (key, expire) in map {
+            self.set_expirey(key, expire);
         }
     }
 
@@ -29,18 +35,20 @@ impl Store {
     }
 
     pub async fn set_with_expire(&self, key: String, val: String, expire: Duration) {
-        let data_clone = self.data.clone();
         let key_clone = key.clone();
         let mut data = self.data.lock().await;
         data.insert(key, val);
+        self.set_expirey(key_clone, expire);
+    }
 
+    fn set_expirey(&self, key: String, expire: Duration) {
+        let data_clone = self.data.clone();
         tokio::spawn(async move {
             sleep(expire).await;
             let mut data = data_clone.lock().await;
-            data.remove(&key_clone);
+            data.remove(&key);
         });
     }
-
     pub async fn get(&self, key: String) -> Option<String> {
         let data = self.data.lock().await;
         data.get(&key).cloned()

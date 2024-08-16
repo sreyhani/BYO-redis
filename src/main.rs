@@ -37,7 +37,8 @@ async fn load_rdb_file(config: SystemConfigArc, store: StoreArc) {
         return;
     }
     let rdb_file = read_rdb_file(rdb_file_path.unwrap()).unwrap();
-    store.add_set(rdb_file.key_vals).await;
+    store.add_multiple_keys(rdb_file.key_vals).await;
+    store.set_multiple_expires(rdb_file.key_expires);
 }
 
 async fn handle_clinet(mut stream: TcpStream, store: StoreArc, config: SystemConfigArc) {
