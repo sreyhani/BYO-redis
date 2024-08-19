@@ -14,7 +14,7 @@ use tokio::net::{TcpListener, TcpStream};
 async fn main() {
     let args = std::env::args();
     let config = Arc::new(parse_args(args).unwrap());
-    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+    let listener = TcpListener::bind("127.0.0.1:".to_owned() + &config.get_port()).await.unwrap();
     println!("start");
     let store = Arc::new(Store::new());
     load_rdb_file(config.clone(), store.clone()).await;

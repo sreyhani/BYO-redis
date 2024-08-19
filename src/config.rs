@@ -8,6 +8,7 @@ pub type SystemConfigArc = Arc<SystemConfig>;
 pub struct SystemConfig {
     db_dir: Option<String>,
     db_file_name: Option<String>,
+    port: Option<String>,
 }
 
 impl SystemConfig {
@@ -25,30 +26,48 @@ impl SystemConfig {
         }
         Some(self.db_dir.clone().unwrap() + "/" + &self.db_file_name.clone().unwrap())
     }
+
+    pub fn get_port(&self) -> String {
+        if self.port.is_none() {
+            return "6379".to_owned();
+        }
+        self.port.clone().unwrap()
+    }
 }
 
 pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
     let mut config = SystemConfig {
         db_dir: None,
         db_file_name: None,
+        port: None,
     };
     let mut peek = args.peekable();
     peek.next();
-    if peek.peek() == Some(&"--dir".to_owned()) {
-        peek.next();
-        let dir = peek
-            .next()
-            .ok_or(anyhow!("should provide value for --dir"))?;
-        config.db_dir = Some(dir);
-        if peek.peek() == Some(&"--dbfilename".to_owned()) {
-            peek.next();
-            let file_name = peek
-                .next()
-                .ok_or(anyhow!("should provide value for --dbfilename"))?;
-            config.db_file_name = Some(file_name);
-        } else {
-            return Err(anyhow!("should provide --dbfilename with --dir"));
+    while let Some(x) = peek.next() {
+        match x.as_str() {
+            "--dir" => {
+                let dir = peek
+                    .next()
+                    .ok_or(anyhow!("should provide value for --dir"))?;
+                config.db_dir = Some(dir);
+            }
+            "--dbfilename" => {
+                let file_name = peek
+                    .next()
+                    .ok_or(anyhow!("should provide value for --dbfilename"))?;
+                config.db_file_name = Some(file_name);
+            }
+            "--port" => {
+                let port = peek
+                    .next()
+                    .ok_or(anyhow!("should provide value for --port"))?;
+                config.port = Some(port)
+            }
+            _ => {}
         }
+    }
+    if config.db_dir != None && config.db_file_name == None {
+        return Err(anyhow!("should provide --dbfilename with --dir"));
     }
     Ok(config)
 }
@@ -80,6 +99,13 @@ mod test {
     }
 
     #[test]
+    fn should_err_if_port_has_no_value() {
+        let args = vec!["exec", "--port"];
+        let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
+        check_err(res, "provide value for --port");
+    }
+
+    #[test]
     fn should_err_if_dbfilename_has_no_value() {
         let args = vec!["exec", "--dir", "filedir", "--dbfilename"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
@@ -95,11 +121,20 @@ mod test {
 
     #[test]
     fn should_return_config_with_given_values() {
-        let args = vec!["exec", "--dir", "filedir", "--dbfilename", "filename"];
+        let args = vec![
+            "exec",
+            "--dir",
+            "filedir",
+            "--dbfilename",
+            "filename",
+            "--port",
+            "7070",
+        ];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         let expected_config = SystemConfig {
             db_dir: Some("filedir".to_owned()),
             db_file_name: Some("filename".to_owned()),
+            port: Some("7070".to_owned()),
         };
         assert_eq!(res.unwrap(), expected_config);
     }
