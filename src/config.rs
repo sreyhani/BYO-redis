@@ -1,14 +1,45 @@
-use std::sync::Arc;
+use std::{
+    default,
+    fmt::{write, Display},
+    sync::Arc,
+};
 
 use anyhow::{anyhow, Result};
 
 pub type SystemConfigArc = Arc<SystemConfig>;
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Role {
+    Master,
+    Slave,
+}
+
+impl Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Role::Master => write!(f, "master"),
+            Role::Slave => write!(f, "slave"),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct SystemConfig {
     db_dir: Option<String>,
     db_file_name: Option<String>,
     port: Option<String>,
+    role: Role,
+}
+
+impl Default for SystemConfig {
+    fn default() -> Self {
+        Self {
+            db_dir: None,
+            db_file_name: None,
+            port: None,
+            role: Role::Master,
+        }
+    }
 }
 
 impl SystemConfig {
@@ -33,14 +64,15 @@ impl SystemConfig {
         }
         self.port.clone().unwrap()
     }
+
+    pub fn get_role(&self) -> Role {
+        self.role.clone()
+    }
+
 }
 
 pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
-    let mut config = SystemConfig {
-        db_dir: None,
-        db_file_name: None,
-        port: None,
-    };
+    let mut config = SystemConfig::default();
     let mut peek = args.peekable();
     peek.next();
     while let Some(x) = peek.next() {
@@ -63,6 +95,10 @@ pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
                     .ok_or(anyhow!("should provide value for --port"))?;
                 config.port = Some(port)
             }
+            "--replicaof" => {
+                config.role = Role::Slave;
+                let _ = peek.next().ok_or(anyhow!("should provide value for --replicaof"))?;
+            }
             _ => {}
         }
     }
@@ -76,7 +112,7 @@ pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
 mod test {
     use anyhow::Result;
 
-    use crate::config::SystemConfig;
+    use crate::config::{Role, SystemConfig};
 
     use super::parse_args;
 
@@ -135,6 +171,26 @@ mod test {
             db_dir: Some("filedir".to_owned()),
             db_file_name: Some("filename".to_owned()),
             port: Some("7070".to_owned()),
+            role: Role::Master
+        };
+        assert_eq!(res.unwrap(), expected_config);
+    }
+
+    #[test]
+    fn should_return_slave_config() {
+        let args = vec![
+            "exec",
+            "--port",
+            "7070",
+            "--replicaof",
+            "localhost 7171"
+        ];
+        let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
+        let expected_config = SystemConfig {
+            db_dir: None,
+            db_file_name: None,
+            port: Some("7070".to_owned()),
+            role: Role::Slave
         };
         assert_eq!(res.unwrap(), expected_config);
     }
