@@ -6,6 +6,7 @@ use redis_starter_rust::config::{parse_args, SystemConfigArc};
 use redis_starter_rust::parser::parse_redis_value;
 use redis_starter_rust::rdb::read_rdb_file;
 use redis_starter_rust::request::{get_request, RequestHandler};
+use redis_starter_rust::slave::start_slave_replica;
 use redis_starter_rust::store::{Store, StoreArc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -14,10 +15,17 @@ use tokio::net::{TcpListener, TcpStream};
 async fn main() {
     let args = std::env::args();
     let config = Arc::new(parse_args(args).unwrap());
-    let listener = TcpListener::bind("127.0.0.1:".to_owned() + &config.get_port()).await.unwrap();
-    println!("start");
+    let listener = TcpListener::bind("127.0.0.1:".to_owned() + &config.get_port())
+        .await
+        .unwrap();
+    println!("start listening on {}", config.get_port());
     let store = Arc::new(Store::new());
     load_rdb_file(config.clone(), store.clone()).await;
+    
+    if config.get_replication_config().is_slave() {
+        tokio::spawn(start_slave_replica(config.clone()));
+    }
+
     loop {
         let (socket, _) = listener.accept().await.unwrap();
         let store_c = store.clone();

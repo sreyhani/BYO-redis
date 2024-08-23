@@ -24,6 +24,18 @@ pub struct ReplicationConfig {
     role: Role,
     id: String,
     offset: u32,
+    master_ip: String,
+    master_port: String,
+}
+
+impl ReplicationConfig {
+    pub fn is_slave(&self) -> bool {
+        self.role == Role::Slave
+    }
+    
+    pub fn get_ip_port(&self) -> (String, String) {
+        (self.master_ip.clone(), self.master_port.clone())
+    }
 }
 
 impl Display for ReplicationConfig {
@@ -40,6 +52,8 @@ impl Default for ReplicationConfig {
             role: Role::Master,
             id: "0bc2cc0c5c37aee9000f72bdbb894c472a444051".to_owned(),
             offset: 0,
+            master_ip: String::default(),
+            master_port: String::default(),
         }
     }
 }
@@ -117,9 +131,13 @@ pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
             }
             "--replicaof" => {
                 config.replication_config.role = Role::Slave;
-                let _ = peek
+                let ip_port = peek
                     .next()
                     .ok_or(anyhow!("should provide value for --replicaof"))?;
+                let mut parts = ip_port.split(' ');
+                let (ip, port) = (parts.next().unwrap(), parts.next().unwrap());
+                config.replication_config.master_ip = ip.to_owned();
+                config.replication_config.master_port = port.to_owned();
             }
             _ => {}
         }
@@ -208,6 +226,8 @@ mod test {
             port: Some("7070".to_owned()),
             replication_config: ReplicationConfig {
                 role: Role::Slave,
+                master_ip: "localhost".to_owned(),
+                master_port: "7171".to_owned(),
                 ..ReplicationConfig::default()
             },
         };
