@@ -1,8 +1,4 @@
-use std::{
-    default,
-    fmt::{write, Display},
-    sync::Arc,
-};
+use std::{fmt::Display, sync::Arc};
 
 use anyhow::{anyhow, Result};
 
@@ -23,12 +19,37 @@ impl Display for Role {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct ReplicationConfig {
+    role: Role,
+    id: String,
+    offset: u32,
+}
+
+impl Display for ReplicationConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "role:{}\n", self.role)?;
+        write!(f, "master_replid:{}\n", self.id)?;
+        write!(f, "master_repl_offset:{}", self.offset)
+    }
+}
+
+impl Default for ReplicationConfig {
+    fn default() -> Self {
+        Self {
+            role: Role::Master,
+            id: "0bc2cc0c5c37aee9000f72bdbb894c472a444051".to_owned(),
+            offset: 0,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SystemConfig {
     db_dir: Option<String>,
     db_file_name: Option<String>,
     port: Option<String>,
-    role: Role,
+    replication_config: ReplicationConfig,
 }
 
 impl Default for SystemConfig {
@@ -37,7 +58,7 @@ impl Default for SystemConfig {
             db_dir: None,
             db_file_name: None,
             port: None,
-            role: Role::Master,
+            replication_config: ReplicationConfig::default(),
         }
     }
 }
@@ -65,10 +86,9 @@ impl SystemConfig {
         self.port.clone().unwrap()
     }
 
-    pub fn get_role(&self) -> Role {
-        self.role.clone()
+    pub fn get_replication_config(&self) -> ReplicationConfig {
+        self.replication_config.clone()
     }
-
 }
 
 pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
@@ -96,8 +116,10 @@ pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
                 config.port = Some(port)
             }
             "--replicaof" => {
-                config.role = Role::Slave;
-                let _ = peek.next().ok_or(anyhow!("should provide value for --replicaof"))?;
+                config.replication_config.role = Role::Slave;
+                let _ = peek
+                    .next()
+                    .ok_or(anyhow!("should provide value for --replicaof"))?;
             }
             _ => {}
         }
@@ -112,7 +134,7 @@ pub fn parse_args(args: impl Iterator<Item = String>) -> Result<SystemConfig> {
 mod test {
     use anyhow::Result;
 
-    use crate::config::{Role, SystemConfig};
+    use crate::config::{ReplicationConfig, Role, SystemConfig};
 
     use super::parse_args;
 
@@ -171,26 +193,23 @@ mod test {
             db_dir: Some("filedir".to_owned()),
             db_file_name: Some("filename".to_owned()),
             port: Some("7070".to_owned()),
-            role: Role::Master
+            replication_config: ReplicationConfig::default(),
         };
         assert_eq!(res.unwrap(), expected_config);
     }
 
     #[test]
     fn should_return_slave_config() {
-        let args = vec![
-            "exec",
-            "--port",
-            "7070",
-            "--replicaof",
-            "localhost 7171"
-        ];
+        let args = vec!["exec", "--port", "7070", "--replicaof", "localhost 7171"];
         let res = parse_args(args.into_iter().map(|arg| arg.to_owned()));
         let expected_config = SystemConfig {
             db_dir: None,
             db_file_name: None,
             port: Some("7070".to_owned()),
-            role: Role::Slave
+            replication_config: ReplicationConfig {
+                role: Role::Slave,
+                ..ReplicationConfig::default()
+            },
         };
         assert_eq!(res.unwrap(), expected_config);
     }

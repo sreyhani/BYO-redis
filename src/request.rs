@@ -1,5 +1,5 @@
 use crate::{config::SystemConfigArc, store::StoreArc};
-use std::{collections::VecDeque, fmt::format, time::Duration};
+use std::{collections::VecDeque, time::Duration};
 
 use anyhow::{anyhow, Ok, Result};
 
@@ -56,8 +56,8 @@ impl RequestHandler {
                 RedisValue::Array(resp)
             }
             Request::INFO => {
-                let role = self.config.get_role().to_string();
-                RedisValue::BulkString(format!("role:{role}").to_owned())
+                let replicatioin_config = self.config.get_replication_config().to_string();
+                RedisValue::BulkString(replicatioin_config)
             }
         }
     }
