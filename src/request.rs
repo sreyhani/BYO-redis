@@ -12,6 +12,7 @@ pub enum Request {
     Get(String),
     ConfigGet(String),
     KEYS(String),
+    INFO,
 }
 
 pub struct RequestHandler {
@@ -54,6 +55,9 @@ impl RequestHandler {
                 let resp = key.into_iter().map(|k| RedisValue::BulkString(k)).collect();
                 RedisValue::Array(resp)
             }
+            Request::INFO => {
+                RedisValue::BulkString("role:master".to_owned())
+            }
         }
     }
 }
@@ -82,7 +86,8 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
                 .ok_or(anyhow!("keys needs at least 1 argument"))?;
             Ok(Request::KEYS(pattern))
         }
-        _ => Err(anyhow!("unsupported command")),
+        "info" => {Ok(Request::INFO)}
+         _ => Err(anyhow!("unsupported command")),
     }
 }
 
