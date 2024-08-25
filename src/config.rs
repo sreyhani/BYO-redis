@@ -32,7 +32,7 @@ impl ReplicationConfig {
     pub fn is_slave(&self) -> bool {
         self.role == Role::Slave
     }
-    
+
     pub fn get_ip_port(&self) -> (String, String) {
         (self.master_ip.clone(), self.master_port.clone())
     }

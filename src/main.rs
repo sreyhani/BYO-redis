@@ -21,7 +21,7 @@ async fn main() {
     println!("start listening on {}", config.get_port());
     let store = Arc::new(Store::new());
     load_rdb_file(config.clone(), store.clone()).await;
-    
+
     if config.get_replication_config().is_slave() {
         tokio::spawn(start_slave_replica(config.clone()));
     }

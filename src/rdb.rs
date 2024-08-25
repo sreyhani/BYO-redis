@@ -35,7 +35,7 @@ fn parse(mut reader: impl BufRead) -> Result<RdbFile> {
     for _ in 0..hash_size {
         let (key, value, expire_time) = read_string_key_value(&mut reader)?;
         if let Some(expire_time) = expire_time {
-            if SystemTime::now()  < expire_time {
+            if SystemTime::now() < expire_time {
                 let duration = expire_time.duration_since(SystemTime::now())?;
                 key_expires.insert(key.clone(), duration);
                 key_vals.insert(key, value);
@@ -70,7 +70,7 @@ fn read_string_key_value(
             reader.read_exact(&mut expire_time_s)?;
             reader.read_exact(&mut value_type)?;
             let expire_time_s = u32::from_le_bytes(expire_time_s) as u64;
-            let expire_time = UNIX_EPOCH + Duration::from_secs(expire_time_s);            
+            let expire_time = UNIX_EPOCH + Duration::from_secs(expire_time_s);
             Some(expire_time)
         }
         _ => None,

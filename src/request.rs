@@ -87,8 +87,8 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
                 .ok_or(anyhow!("keys needs at least 1 argument"))?;
             Ok(Request::KEYS(pattern))
         }
-        "info" => {Ok(Request::INFO)}
-         _ => Err(anyhow!("unsupported command")),
+        "info" => Ok(Request::INFO),
+        _ => Err(anyhow!("unsupported command")),
     }
 }
 
