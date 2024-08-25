@@ -29,6 +29,9 @@ async fn handshake_with_master(config: SystemConfigArc, mut tcp_stream: TcpStrea
     send_command(&mut tcp_stream, handshake3).await;
     check_response(&mut tcp_stream, RedisValue::SimpleString("OK".to_owned())).await?;
 
+    let handshake4 = make_command(vec!["PSYNC", "?", "-1"]);
+    send_command(&mut tcp_stream, handshake4).await;
+
     Ok(())
 }
 
