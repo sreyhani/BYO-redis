@@ -13,6 +13,7 @@ pub enum Request {
     ConfigGet(String),
     KEYS(String),
     INFO,
+    REPLCONF,
 }
 
 pub struct RequestHandler {
@@ -26,7 +27,7 @@ impl RequestHandler {
 
     pub async fn handle_request(&mut self, req: Request) -> RedisValue {
         match req {
-            Request::Ping => RedisValue::BulkString("PONG".to_string()),
+            Request::Ping => RedisValue::SimpleString("PONG".to_string()),
             Request::Echo(s) => RedisValue::BulkString(s),
             Request::Set(key, value, None) => {
                 self.store.set(key, value).await;
@@ -59,6 +60,7 @@ impl RequestHandler {
                 let replicatioin_config = self.config.get_replication_config().to_string();
                 RedisValue::BulkString(replicatioin_config)
             }
+            Request::REPLCONF => RedisValue::SimpleString("OK".to_owned()),
         }
     }
 }
@@ -88,7 +90,8 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
             Ok(Request::KEYS(pattern))
         }
         "info" => Ok(Request::INFO),
-        _ => Err(anyhow!("unsupported command")),
+        "replconf" => Ok(Request::REPLCONF),
+        x => Err(anyhow!("unsupported command: {x}")),
     }
 }
 

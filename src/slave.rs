@@ -13,13 +13,22 @@ use tokio::{
 pub async fn start_slave_replica(config: SystemConfigArc) {
     let (ip, port) = config.get_replication_config().get_ip_port();
     let tcp_stream = TcpStream::connect(format!("{ip}:{port}")).await.unwrap();
-    handshake_with_master(tcp_stream).await.unwrap();
+    handshake_with_master(config, tcp_stream).await.unwrap();
 }
 
-async fn handshake_with_master(mut tcp_stream: TcpStream) -> Result<()> {
+async fn handshake_with_master(config: SystemConfigArc, mut tcp_stream: TcpStream) -> Result<()> {
     let handshake1 = make_command(vec!["PING"]);
     send_command(&mut tcp_stream, handshake1).await;
-    check_response(&mut tcp_stream, RedisValue::BulkString("PONG".to_owned())).await?;
+    check_response(&mut tcp_stream, RedisValue::SimpleString("PONG".to_owned())).await?;
+
+    let handshake2 = make_command(vec!["REPLCONF", "listening-port", &config.get_port()]);
+    send_command(&mut tcp_stream, handshake2).await;
+    check_response(&mut tcp_stream, RedisValue::SimpleString("OK".to_owned())).await?;
+
+    let handshake3 = make_command(vec!["REPLCONF", "capa", "psync2"]);
+    send_command(&mut tcp_stream, handshake3).await;
+    check_response(&mut tcp_stream, RedisValue::SimpleString("OK".to_owned())).await?;
+
     Ok(())
 }
 
@@ -39,7 +48,7 @@ async fn check_response(stream: &mut TcpStream, expected_response: RedisValue) -
     }
     let response = parse_redis_value(&mut buf).unwrap();
     if response != expected_response {
-        return Err(anyhow!("Invalid reponse from master"));
+        return Err(anyhow!("Invalid reponse from master: {:?}", response));
     }
     println!("received response: {:?}", response);
     Ok(())
