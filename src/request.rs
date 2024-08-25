@@ -14,6 +14,7 @@ pub enum Request {
     KEYS(String),
     INFO,
     REPLCONF,
+    PSYNC,
 }
 
 pub struct RequestHandler {
@@ -61,6 +62,15 @@ impl RequestHandler {
                 RedisValue::BulkString(replicatioin_config)
             }
             Request::REPLCONF => RedisValue::SimpleString("OK".to_owned()),
+            Request::PSYNC => {
+                let replication_config = self.config.get_replication_config();
+                let resp = format!(
+                    "FULLRESYNC {} {}",
+                    replication_config.get_id(),
+                    replication_config.get_offset()
+                );
+                RedisValue::SimpleString(resp)
+            }
         }
     }
 }
@@ -91,6 +101,7 @@ pub fn get_request(value: RedisValue) -> Result<Request> {
         }
         "info" => Ok(Request::INFO),
         "replconf" => Ok(Request::REPLCONF),
+        "psync" => Ok(Request::PSYNC),
         x => Err(anyhow!("unsupported command: {x}")),
     }
 }

@@ -33,6 +33,14 @@ impl ReplicationConfig {
         self.role == Role::Slave
     }
 
+    pub fn get_id(&self) -> String {
+        self.id.clone()
+    }
+
+    pub fn get_offset(&self) -> u32 {
+        self.offset
+    }
+
     pub fn get_ip_port(&self) -> (String, String) {
         (self.master_ip.clone(), self.master_port.clone())
     }
