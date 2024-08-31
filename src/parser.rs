@@ -17,6 +17,14 @@ impl RedisValue {
             _ => Err(anyhow!("value is not bulkstring")),
         }
     }
+    
+    pub fn make_bulk_array(strs: Vec<String>) -> RedisValue {
+        let bulk_arr = strs
+            .into_iter()
+            .map(|str| RedisValue::BulkString(str))
+            .collect();
+        RedisValue::Array(bulk_arr)
+    }
 
     pub fn serialize(&self) -> String {
         match self {

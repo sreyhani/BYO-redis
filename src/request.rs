@@ -5,7 +5,7 @@ use anyhow::{anyhow, Ok, Result};
 
 use crate::parser::RedisValue;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Request {
     Ping,
     Echo(String),
@@ -47,16 +47,12 @@ impl RequestHandler {
             }
             Request::ConfigGet(key) => {
                 let val = self.config.get_config(&key).unwrap_or(String::new());
-                RedisValue::Array(vec![
-                    RedisValue::BulkString(key),
-                    RedisValue::BulkString(val),
-                ])
+                RedisValue::make_bulk_array(vec![key,val])
             }
             Request::KEYS(pattern) => {
                 assert!(pattern == "*");
                 let key = self.store.get_matching_keys(pattern).await;
-                let resp = key.into_iter().map(|k| RedisValue::BulkString(k)).collect();
-                RedisValue::Array(resp)
+                RedisValue::make_bulk_array(key)
             }
             Request::INFO => {
                 let replicatioin_config = self.config.get_replication_config().to_string();
