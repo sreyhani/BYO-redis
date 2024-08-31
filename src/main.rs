@@ -5,7 +5,7 @@ use bytes::BytesMut;
 use redis_starter_rust::config::{parse_args, SystemConfigArc};
 use redis_starter_rust::parser::parse_redis_value;
 use redis_starter_rust::rdb::read_rdb_file;
-use redis_starter_rust::request::{get_request, RequestHandler};
+use redis_starter_rust::request::{get_request, Request, RequestHandler};
 use redis_starter_rust::slave::start_slave_replica;
 use redis_starter_rust::store::{Store, StoreArc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -59,10 +59,22 @@ async fn handle_clinet(mut stream: TcpStream, store: StoreArc, config: SystemCon
         }
 
         let request = get_request(parse_redis_value(&mut buf).unwrap()).unwrap();
-        let response = req_handler.handle_request(request).await;
+        let response = req_handler.handle_request(request.clone()).await;
         stream
             .write_all(response.serialize().as_bytes())
             .await
             .unwrap();
+        send_rdb_as_master(request, &mut stream).await;
+    }
+}
+
+async fn send_rdb_as_master(request: Request, stream: &mut TcpStream) {
+    match request {
+        Request::PSYNC => {
+            let empty_rdb = hex::decode("524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2").expect("could not decode");
+            stream.write(format!("${}\r\n", empty_rdb.len()).as_bytes()).await.unwrap();
+            stream.write(empty_rdb.as_slice()).await.unwrap();
+        }
+        _ => (),
     }
 }

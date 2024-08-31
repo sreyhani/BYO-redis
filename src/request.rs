@@ -5,6 +5,7 @@ use anyhow::{anyhow, Ok, Result};
 
 use crate::parser::RedisValue;
 
+#[derive(Clone)]
 pub enum Request {
     Ping,
     Echo(String),
