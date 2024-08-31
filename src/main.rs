@@ -26,7 +26,7 @@ async fn main() {
     load_rdb_file(config.clone(), store.clone()).await;
 
     if config.get_replication_config().is_slave() {
-        tokio::spawn(start_slave_replica(config.clone()));
+        tokio::spawn(start_slave_replica(store.clone(), config.clone()));
     }
     let (sender, mut _rx) = broadcast::channel::<Request>(100);
     loop {
